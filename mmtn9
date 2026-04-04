@@ -1,1 +1,109 @@
-# code_m-ngmaytinh9
+import random
+import time
+
+def xor(a, b):
+    """Thực hiện phép toán XOR nhị phân giữa hai chuỗi bit"""
+    result = []
+    for i in range(1, len(b)):
+        result.append('0' if a[i] == b[i] else '1')
+    return "".join(result)
+
+def crc_division_trace(dividend, divisor):
+    """Thuật toán chia nhị phân Modulo-2 có hiển thị từng bước"""
+    pick = len(divisor)
+    temp = dividend[0 : pick]
+    
+    while pick < len(dividend):
+        if temp[0] == '1':
+            temp = xor(divisor, temp) + dividend[pick]
+        else:
+            temp = xor('0'*len(divisor), temp) + dividend[pick]
+        pick += 1
+
+    if temp[0] == '1':
+        temp = xor(divisor, temp)
+    else:
+        temp = xor('0'*len(divisor), temp)
+    return temp
+
+def main():
+    # Đa thức sinh tiêu chuẩn CRC-4: x^4 + x + 1 (10011) 
+    GENERATOR = "10011"
+    
+    print("="*65)
+    print("PHẦN MỀM TRUYỀN TIN AN TOÀN NEU - CRC-4")
+    print("="*65)
+
+    # --- BƯỚC 1: BẢO VỆ ĐẦU VÀO (SENDER SIDE) ---
+    while True:
+        data = input("\n>> NHẬP DỮ LIỆU GỬI (4-16 bit nhị phân): ").strip()
+        
+        # Kiểm tra định dạng nhị phân và độ dài 
+        if not data:
+            print("[!] LỖI: Dữ liệu không được để trống!")
+            continue
+        if not all(bit in '01' for bit in data):
+            print("[!] LỖI: Chỉ được nhập bit '0' hoặc '1'.")
+            continue
+        if not (4 <= len(data) <= 16):
+            print("[!] LỖI: Độ dài phải từ 4 đến 16 bit để mô phỏng Frame.")
+            continue
+        break # Dữ liệu hợp lệ
+
+    # --- BƯỚC 2: ĐÓNG GÓI KHUNG TIN (ENCAPSULATION) ---
+    print(f"\n[BÊN GỬI] Đang thực hiện thuật toán CRC-4...")
+    time.sleep(0.5)
+    
+    # Thêm 4 bit 0 (Padding) 
+    appended_data = data + '0' * (len(GENERATOR) - 1)
+    # Tính số dư (FCS) 
+    remainder = crc_division_trace(appended_data, GENERATOR)
+    # Hợp nhất khung tin 
+    codeword = data + remainder
+    
+    print(f"-> Dữ liệu gốc: {data}")
+    print(f"-> Mã CRC-4:    {remainder}")
+    print(f"-> Khung tin:   {codeword} (Đã sẵn sàng truyền qua Wi-Fi NEU)")
+
+    # --- BƯỚC 3: GIẢ LẬP NHIỄU VÀ BẮT LỖI LỰA CHỌN ---
+    received = codeword
+    while True:
+        print("\n" + "-"*40)
+        print("MÔ PHỎNG NHIỄU TRUYỀN DẪN TẠI GIẢNG ĐƯỜNG")
+        choice = input(">> Bạn có muốn giả lập nhiễu làm sai bit không? (y/n): ").strip().lower()
+
+        if choice == 'y':
+            # Đảo 1 bit ngẫu nhiên để tạo lỗi
+            idx = random.randint(0, len(codeword) - 1)
+            temp_list = list(codeword)
+            temp_list[idx] = '1' if temp_list[idx] == '0' else '0'
+            received = "".join(temp_list)
+            print(f"[!] CẢNH BÁO: Nhiễu điện từ làm sai bit tại vị trí {idx+1}!")
+            print(f"-> Gói tin thực tế đến Server: {received}")
+            break
+        elif choice == 'n':
+            print("[OK] Môi trường truyền dẫn lý tưởng. Gói tin nguyên vẹn.")
+            received = codeword
+            break
+        else:
+            print("[!] GỢI Ý: Vui lòng chỉ nhập 'y' (Đồng ý) hoặc 'n' (Bỏ qua).")
+
+    # --- BƯỚC 4: KIỂM TRA TẠI BÊN NHẬN (RECEIVER SIDE) ---
+    print("\n" + "."*60)
+    print("[BÊN NHẬN] Server NEU đang thẩm định khung tin...")
+    time.sleep(1)
+    
+    # Kiểm tra dư số 
+    check_remainder = crc_division_trace(received, GENERATOR)
+    
+    print(f"-> Kết quả chia Modulo-2: {check_remainder}")
+    
+    if int(check_remainder, 2) == 0:
+        print("\n==> TRẠNG THÁI: THÀNH CÔNG ")
+        print(f"    Nội dung nhận được: {received[:-4]} (Đã bóc tách CRC)")
+    else:
+        print("\n==> TRẠNG THÁI: PHÁT HIỆN LỖI ")
+        print("    Hành động: Đã hủy gói tin (Discard) và gửi yêu cầu ARQ yêu cầu gửi lại!")
+
+if __name__ == "__main__":
+    main()
